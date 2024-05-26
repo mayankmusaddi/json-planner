@@ -1,3 +1,6 @@
+__pycache__/
 .idea
+.env
 venv
+
 test.ipynb

@@ -1,12 +1,11 @@
-import asyncio
 import json
 from jsonschema import validate, ValidationError
+import logging
 from openai import OpenAI
 
 
 class OpenAIClient:
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         self.model = kwargs.get("model", "gpt-3.5-turbo")
         self.temperature = kwargs.get("temperature", 0)
         self.top_p = kwargs.get("top_p", 0)
@@ -94,7 +93,9 @@ class OpenAIClient:
             schema=schema,
             json_mode=json_mode,
         )
+        logging.info(f"OPENAI PROMPT: {prompt}")
         response = self.client.chat.completions.create(**payload)
+        logging.info(f"OPENAI RESPONSE: {response}")
         message = response.choices[0].message
         messages.append(dict(message))
 
@@ -102,6 +103,7 @@ class OpenAIClient:
             return messages
 
         if json_mode:
+            # TODO: remove passing of schema again for correction messages
             json_response = json.loads(message.content)
             success, error_message = self.validate_json(json_response, schema)
             if success:
@@ -141,28 +143,9 @@ class OpenAIClient:
 
 
 if __name__ == "__main__":
+    import asyncio
+    from fixtures import json_examples
+    logging.getLogger().setLevel(logging.INFO)
     client = OpenAIClient()
-    system_prompt = "You are a helpful assistant!"
-    prompt = "Dell retweet sentiment analysis!"
-    schema = {
-        "type": "object",
-        "properties": {
-            "chart_type": {
-                "type": "string",
-                "enum": ["Counter", "Table", "Column", "Bar", "Line", "Spline", "Pie"],
-                "description": "The chart type name that can be used to plot the data for user query from the selected enums",
-            },
-            "name": {"type": "string", "description": "The title of the chart plot"},
-            "description": {
-                "type": "string",
-                "description": "A brief description of what the chart intends to plot",
-            },
-        },
-        "required": ["chart_type", "name", "description"],
-    }
-    messages = asyncio.run(
-        client.call(
-            prompt=prompt, system_prompt=system_prompt, schema=schema, json_mode=True
-        )
-    )
-    print(messages)
+    run_messages = asyncio.run(client.call(**json_examples[0]))
+    print(run_messages)

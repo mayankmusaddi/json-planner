@@ -22,7 +22,9 @@ def app():
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
-        st.session_state["chart_state"] = ResponseState(schema=schema_examples["chart_type_schema"])
+        st.session_state["chart_state"] = ResponseState(
+            schema=schema_examples["chart_type_schema"]
+        )
 
     for i, message in enumerate(
         st.session_state.messages

@@ -145,6 +145,7 @@ class OpenAIClient:
 if __name__ == "__main__":
     import asyncio
     from fixtures import json_examples
+
     logging.getLogger().setLevel(logging.INFO)
     client = OpenAIClient()
     run_messages = asyncio.run(client.call(**json_examples[0]))

@@ -3,7 +3,7 @@ import json
 import logging
 import streamlit as st
 
-from state import ResponseState
+from state import NodeState
 from fixtures import schema_examples
 
 TITLE = "JSON-PLANNER"
@@ -22,7 +22,7 @@ def app():
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
-        st.session_state["chart_state"] = ResponseState(
+        st.session_state["chart_state"] = NodeState(
             schema=schema_examples["chart_type_schema"]
         )
 

@@ -3,7 +3,7 @@ import logging
 from openai_utils import OpenAIClient
 
 
-class ResponseState:
+class NodeState:
     def __init__(self, *args, **kwargs):
         self.system_prompt = kwargs.get("system_prompt", None)
         self.schema = kwargs.get("schema", None)
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     from fixtures import json_examples
 
     logging.getLogger().setLevel(logging.INFO)
-    response_state = ResponseState(**json_examples[1])
+    response_state = NodeState(**json_examples[1])
     run_response, run_change = asyncio.run(
         response_state.process(json_examples[1]["prompt"])
     )

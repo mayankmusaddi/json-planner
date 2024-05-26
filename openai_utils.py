@@ -82,6 +82,7 @@ class OpenAIClient:
             either prompt or messages must be filled
             if json_mode is true then schema cannot be None
         """
+        # TODO Add option for enum-based string output schema
         if attempts == 0:
             messages.append({"role": "error", "content": "Failed to Adhere to JSON"})
             return messages

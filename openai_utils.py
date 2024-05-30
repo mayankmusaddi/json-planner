@@ -1,5 +1,5 @@
 import json
-from jsonschema import validate, ValidationError
+from validation_utils import Validator
 import logging
 from openai import OpenAI
 
@@ -11,18 +11,6 @@ class OpenAIClient:
         self.top_p = kwargs.get("top_p", 0)
         self.max_tokens = kwargs.get("max_tokens", 512)
         self.client = OpenAI()
-
-    @staticmethod
-    def validate_json(response, schema):
-        success = True
-        error_message = ""
-        try:
-            validate(instance=response, schema=schema)
-        except ValidationError as e:
-            success = False
-            error = str(e).split("\n")[0]
-            error_message = f"Response not adhering to schema:\n{error}"
-        return success, error_message
 
     def create_payload(
         self,
@@ -46,7 +34,7 @@ class OpenAIClient:
             "max_tokens": self.max_tokens,
         }
         if not schema:
-            return payload
+            return payload, messages
 
         if json_mode:
             payload["messages"][-1][
@@ -59,6 +47,15 @@ class OpenAIClient:
             ]
             payload["tool_choice"] = {"type": "function", "function": {"name": "func"}}
         return payload, messages
+
+    async def llm_call(self, **kwargs):
+        payload, messages = self.create_payload(**kwargs)
+        logging.info(f"OPENAI PROMPT: {payload}")
+        response = self.client.chat.completions.create(**payload)
+        logging.info(f"OPENAI RESPONSE: {response}")
+        message = response.choices[0].message
+        messages.append(dict(message))
+        return message, messages
 
     async def call(
         self,
@@ -82,65 +79,55 @@ class OpenAIClient:
             either prompt or messages must be filled
             if json_mode is true then schema cannot be None
         """
-        # TODO Add option for enum-based string output schema
-        if attempts == 0:
-            messages.append({"role": "error", "content": "Failed to Adhere to JSON"})
-            return messages
-
-        payload, messages = self.create_payload(
+        message, messages = await self.llm_call(
             prompt=prompt,
             system_prompt=system_prompt,
             messages=messages,
             schema=schema,
             json_mode=json_mode,
         )
-        logging.info(f"OPENAI PROMPT: {prompt}")
-        response = self.client.chat.completions.create(**payload)
-        logging.info(f"OPENAI RESPONSE: {response}")
-        message = response.choices[0].message
-        messages.append(dict(message))
-
         if not schema:
             return messages
 
-        if json_mode:
-            # TODO: remove passing of schema again for correction messages
-            json_response = json.loads(message.content)
-            success, error_message = self.validate_json(json_response, schema)
-            if success:
-                return messages
+        i = 0
+        while i < attempts:
+            i += 1
+            if json_mode:
+                json_response = json.loads(message.content)
+                success, error_message = Validator.validate_json(json_response, schema)
+                if success:
+                    return messages
+                else:
+                    message, messages = await self.llm_call(
+                        prompt=error_message,
+                        system_prompt=system_prompt,
+                        messages=messages,
+                        json_mode=False,
+                    )
             else:
-                return await self.call(
-                    prompt=error_message,
-                    messages=messages,
-                    schema=schema,
-                    json_mode=json_mode,
-                    attempts=attempts - 1,
-                )
-        else:
-            tool_call = message.tool_calls[0]
-            json_response = json.loads(tool_call.function.arguments)
-            success, error_message = self.validate_json(json_response, schema)
-            if success:
-                messages.append(
-                    {"role": "assistant", "content": tool_call.function.arguments}
-                )
-                return messages
-            else:
-                messages.append(
-                    {
-                        "tool_call_id": tool_call.id,
-                        "role": "tool",
-                        "name": tool_call.function.name,
-                        "content": error_message,
-                    }
-                )
-                return await self.call(
-                    messages=messages,
-                    schema=schema,
-                    json_mode=json_mode,
-                    attempts=attempts - 1,
-                )
+                tool_call = message.tool_calls[0]
+                json_response = json.loads(tool_call.function.arguments)
+                success, error_message = Validator.validate_json(json_response, schema)
+                if success:
+                    messages.append(
+                        {"role": "assistant", "content": tool_call.function.arguments}
+                    )
+                    return messages
+                else:
+                    messages.append(
+                        {
+                            "tool_call_id": tool_call.id,
+                            "role": "tool",
+                            "name": tool_call.function.name,
+                            "content": error_message,
+                        }
+                    )
+                    message, messages = await self.llm_call(
+                        messages=messages, schema=schema, json_mode=False
+                    )
+
+        messages.append({"role": "error", "content": "Failed to Adhere to JSON"})
+        return messages
 
 
 if __name__ == "__main__":
@@ -149,5 +136,6 @@ if __name__ == "__main__":
 
     logging.getLogger().setLevel(logging.INFO)
     client = OpenAIClient()
-    run_messages = asyncio.run(client.call(**json_examples[0]))
-    print(run_messages)
+    print("INPUT", json_examples[0])
+    run_messages = asyncio.run(client.call(**json_examples[0], json_mode=False))
+    print("OUTPUT", run_messages)

@@ -3,6 +3,9 @@ from validation_utils import Validator
 import logging
 from openai import OpenAI
 
+JSON_MODE = "json_mode"
+TOOL_CALL = "tool_call"
+SIMPLIFY = "simplify"
 
 class OpenAIClient:
     def __init__(self, *args, **kwargs):
@@ -18,7 +21,7 @@ class OpenAIClient:
         system_prompt=None,
         messages=None,
         schema=None,
-        json_mode=True,
+        mode=JSON_MODE,
     ):
         if not messages:
             messages = []
@@ -36,12 +39,14 @@ class OpenAIClient:
         if not schema:
             return payload, messages
 
-        if json_mode:
+        if mode == JSON_MODE:
             payload["messages"][-1][
                 "content"
             ] += f"\nSCHEMA - {schema}\nReturn JSON following above schema."
             payload["response_format"] = {"type": "json_object"}
-        else:
+        elif mode == SIMPLIFY:
+            payload["messages"][-1]["content"] +=
+        elif mode == TOOL_CALL:
             payload["tools"] = [
                 {"type": "function", "function": {"name": "func", "parameters": schema}}
             ]
@@ -63,7 +68,7 @@ class OpenAIClient:
         system_prompt=None,
         messages=None,
         schema=None,
-        json_mode=False,
+        mode=None,
         attempts=3,
     ):
         """
@@ -71,7 +76,7 @@ class OpenAIClient:
         :param system_prompt:
         :param messages:
         :param schema:
-        :param json_mode:
+        :param mode:
         :param attempts:
         :return:
 
@@ -84,7 +89,7 @@ class OpenAIClient:
             system_prompt=system_prompt,
             messages=messages,
             schema=schema,
-            json_mode=json_mode,
+            mode=mode,
         )
         if not schema:
             return messages
@@ -92,7 +97,7 @@ class OpenAIClient:
         i = 0
         while i < attempts:
             i += 1
-            if json_mode:
+            if mode == JSON_MODE:
                 json_response = json.loads(message.content)
                 success, error_message = Validator.validate_json(json_response, schema)
                 if success:
@@ -104,7 +109,7 @@ class OpenAIClient:
                         messages=messages,
                         json_mode=False,
                     )
-            else:
+            elif mode == TOOL_CALL:
                 tool_call = message.tool_calls[0]
                 json_response = json.loads(tool_call.function.arguments)
                 success, error_message = Validator.validate_json(json_response, schema)

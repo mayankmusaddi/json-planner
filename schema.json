@@ -1,0 +1,148 @@
+{
+  "type": "object",
+  "properties": {
+    "data_source": {
+      "type": "string",
+      "enum": []
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "output_format": {
+      "type": "string",
+      "enum": [
+        "text",
+        "visualization"
+      ]
+    },
+    "chart_type": {
+      "type": "string",
+      "enum": ["Pie", "Line"]
+    },
+    "filters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "filterType": {
+            "type": "string"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          }
+        }
+      }
+    },
+    "timefilter": {
+      "type": "object",
+      "properties": {
+        "start_time": {
+          "type": "string"
+        },
+        "end_time": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "start_time",
+        "end_time"
+      ]
+    }
+  },
+  "required": [
+    "name",
+    "description",
+    "output_format",
+    "chart_type",
+    "filters",
+    "timefilter"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "chart_type": {
+            "const": "Pie"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "chart_fields": {
+            "ty🥳🥺🦑🐙🐸🦁🐭🦄🐰🐢🐞🕸🐽🐷🐮🐶🙉🙈🐒🙊🐱🪱pe": "object",
+            "properties": {
+              "wedgeValue": {
+                "type": "string",
+                "enum": ["Dimension","Metric"]
+              },
+              "columns": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "type": "string",
+                      "enum": ["Metric"]
+                    },
+                    "aggregate_function": {
+                      "type": "string",
+                      "enum": ["AVG","SUM","MIN","MAX","NONE"]
+                    }
+                  }
+                },
+                "minItems": 1
+              }
+            },
+            "required": ["wedgeValue","columns"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "chart_type": {
+            "const": "Line"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "chart_fields": {
+            "type": "object",
+            "properties": {
+              "yAxis": {
+                "type": "string",
+                "enum": ["Dimension", "Metric"]
+              },
+              "xAxis": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "type": "string",
+                    "enum": ["Metric"]
+                  },
+                  "aggregate_function": {
+                    "type": "string",
+                    "enum": ["AVG", "SUM", "MIN", "MAX", "NONE"]
+                  }
+                }
+              }
+            },
+            "required": ["xAxis", "yAxis"]
+        }
+        }
+      }
+    }
+  ]
+}

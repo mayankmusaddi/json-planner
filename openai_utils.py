@@ -2,10 +2,12 @@ import json
 from validation_utils import Validator
 import logging
 from openai import OpenAI
+from schema import JSONSchema
 
 JSON_MODE = "json_mode"
 TOOL_CALL = "tool_call"
 SIMPLIFY = "simplify"
+
 
 class OpenAIClient:
     def __init__(self, *args, **kwargs):
@@ -45,7 +47,9 @@ class OpenAIClient:
             ] += f"\nSCHEMA - {schema}\nReturn JSON following above schema."
             payload["response_format"] = {"type": "json_object"}
         elif mode == SIMPLIFY:
-            payload["messages"][-1]["content"] +=
+            payload["messages"][-1][
+                "content"
+            ] += f"\n{JSONSchema().schema_prompt(schema)}"
         elif mode == TOOL_CALL:
             payload["tools"] = [
                 {"type": "function", "function": {"name": "func", "parameters": schema}}
